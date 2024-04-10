@@ -1,1 +1,1 @@
-console.log('[main] Hello, world!');
+window.location.href = '/tunnel';

@@ -1,0 +1,59 @@
+<h1>web-p2p-tunnel</h1>
+
+<hr />
+
+<section>
+  <h2>Tunnel</h2>
+
+  <form id="tunnel-connect">
+    <label>
+      Room ID:
+      <input type="text" name="room-id" />
+    </label>
+    <button type="submit">Connect</button>
+  </form>
+
+  <br />
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Service worker</td>
+        <td><span id="sw-status">unknown</span></td>
+      </tr>
+      <tr>
+        <td>Signaling</td>
+        <td><span id="signaling-status">uninitialized</span></td>
+      </tr>
+      <tr>
+        <td>WebRTC</td>
+        <td><span id="webrtc-status">uninitialized</span></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<hr />
+
+<section>
+  <h2>Requests</h2>
+
+  <table id="requests">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Method</th>
+        <th>URL</th>
+        <th>Headers</th>
+        <th>Body?</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>

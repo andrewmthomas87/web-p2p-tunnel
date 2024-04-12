@@ -1,5 +1,7 @@
 import html from '@rollup/plugin-html';
+import replace from '@rollup/plugin-replace';
 import typescript from '@rollup/plugin-typescript';
+import 'dotenv/config';
 import { defineConfig } from 'rollup';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -24,6 +26,11 @@ export default defineConfig([
       entryFileNames: '[name]-[hash].js',
     },
     plugins: [
+      replace({
+        'import.meta.env.PUBLIC_SIGNALING_SERVER_URL': JSON.stringify(
+          process.env.PUBLIC_SIGNALING_SERVER_URL,
+        ),
+      }),
       typescript({ tsconfig: 'src/tsconfig.json' }),
       html({
         fileName: 'tunnel.html',

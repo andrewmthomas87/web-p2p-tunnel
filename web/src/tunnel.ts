@@ -13,19 +13,19 @@ temp.innerHTML = `
   <tbody>
   </tbody>
 </table>`;
-const messagesTable = temp.content;
+const messagesTable = temp.content.children[0];
 const messagesTbody = messagesTable.querySelector('tbody');
-
-document.body.prepend(messagesTable);
+document.body.appendChild(temp.content);
 
 if (!('serviceWorker' in navigator)) {
-  throw new Error('Service workers are not supported');
+  throw new Error('service workers are not supported');
 }
 
 try {
   await navigator.serviceWorker.register('/sw.js', { type: 'module' });
 } catch (error) {
   console.error('Failed to register service worker', error);
+  throw error;
 }
 
 navigator.serviceWorker.addEventListener('message', async (ev) => {
@@ -62,6 +62,37 @@ navigator.serviceWorker.addEventListener('message', async (ev) => {
       n: Math.random(),
     });
   }
+});
+
+temp.innerHTML = `
+<form>
+  <label>
+    Room ID:
+    <input type="text" name="room-id" />
+  </label>
+  <button type="submit">Connect</button>
+</form>`;
+const connectForm = temp.content.children[0] as HTMLFormElement;
+document.body.appendChild(temp.content);
+
+connectForm.addEventListener('submit', (ev) => {
+  ev.preventDefault();
+
+  const data = new FormData(connectForm);
+  const roomID = data.get('room-id');
+  if (!(typeof roomID === 'string' && roomID)) {
+    throw new Error('connect form: invalid data');
+  }
+
+  const wsURL = new URL('ws', import.meta.env.PUBLIC_SIGNALING_SERVER_URL);
+  wsURL.search = new URLSearchParams({ role: 'client', 'room-id': roomID }).toString();
+  if (wsURL.protocol === 'https:') {
+    wsURL.protocol = 'wss:';
+  } else {
+    wsURL.protocol = 'ws:';
+  }
+
+  const ws = new WebSocket(wsURL);
 });
 
 export {};

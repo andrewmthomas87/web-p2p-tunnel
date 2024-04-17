@@ -68,7 +68,7 @@ func (r *Room) HandleServerConn(conn *websocket.Conn) {
 			return
 		}
 
-		if err := r.sendMessageToClient(message.ClientID, message.Data); err != nil {
+		if err := r.sendMessageToClient(message.ClientID, message.Message); err != nil {
 			return
 		}
 	}
@@ -95,18 +95,18 @@ func (r *Room) HandleClientConn(conn *websocket.Conn) {
 	}()
 
 	for {
-		var data json.RawMessage
-		if err := conn.ReadJSON(&data); err != nil {
+		var message Message
+		if err := conn.ReadJSON(&message); err != nil {
 			return
 		}
 
-		if err := r.sendMessageToServer(id, data); err != nil {
+		if err := r.sendMessageToServer(id, message); err != nil {
 			return
 		}
 	}
 }
 
-func (r *Room) sendMessageToClient(clientID string, data json.RawMessage) error {
+func (r *Room) sendMessageToClient(clientID string, message Message) error {
 	r.clientConnsLock.Lock()
 	defer r.clientConnsLock.Unlock()
 
@@ -115,14 +115,14 @@ func (r *Room) sendMessageToClient(clientID string, data json.RawMessage) error 
 		return errors.New("unknown client")
 	}
 
-	if err := conn.WriteJSON(data); err != nil {
+	if err := conn.WriteJSON(message); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *Room) sendMessageToServer(clientID string, data json.RawMessage) error {
+func (r *Room) sendMessageToServer(clientID string, message Message) error {
 	r.serverConnLock.Lock()
 	defer r.serverConnLock.Unlock()
 
@@ -130,14 +130,11 @@ func (r *Room) sendMessageToServer(clientID string, data json.RawMessage) error 
 		return errors.New("no server")
 	}
 
-	message := ServerMessage{
-		Message: Message{
-			Type: "client",
-			Data: data,
-		},
+	sm := ServerMessage{
+		Message:  message,
 		ClientID: clientID,
 	}
-	if err := r.serverConn.WriteJSON(message); err != nil {
+	if err := r.serverConn.WriteJSON(sm); err != nil {
 		return err
 	}
 

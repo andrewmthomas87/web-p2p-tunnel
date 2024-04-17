@@ -1,4 +1,16 @@
-export async function setupSW(statusEl: HTMLElement, requestsEl: HTMLElement) {
+export type RequestData = {
+  id: number;
+  method: string;
+  url: string;
+  headersList: [string, string][];
+  body: ReadableStream<Uint8Array> | null;
+};
+
+export async function setupSW(
+  tunnel: (data: RequestData) => Promise<Response>,
+  statusEl: HTMLElement,
+  requestsEl: HTMLElement,
+) {
   if (!('serviceWorker' in navigator)) {
     statusEl.innerText = 'error: not supported';
     alert('Error: service workers are not supported');
@@ -24,17 +36,25 @@ export async function setupSW(statusEl: HTMLElement, requestsEl: HTMLElement) {
 
   navigator.serviceWorker.addEventListener('message', async (ev) => {
     if (ev.data.type === 'request') {
-      const { id, method, url, headersList, body } = ev.data as {
-        id: number;
-        method: string;
-        url: string;
-        headersList: [string, string][];
-        body: ReadableStream<Uint8Array> | null;
-      };
-      const headersStr = headersList.map(([key, value]) => `${key}: ${value}`).join('\n');
+      const data = ev.data as RequestData;
+      addToTable(data, requestsEl);
 
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
+      await tunnel(data);
+
+      ev.source?.postMessage({
+        type: 'response',
+        id: data.id,
+        n: Math.random(),
+      });
+    }
+  });
+}
+
+function addToTable({ id, method, url, headersList, body }: RequestData, requestsEl: HTMLElement) {
+  const headersStr = headersList.map(([key, value]) => `${key}: ${value}`).join('\n');
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
   <td><pre>${id}</pre></td>
   <td><pre>${method}</pre></td>
   <td><pre>${url}</pre></td>
@@ -45,15 +65,5 @@ export async function setupSW(statusEl: HTMLElement, requestsEl: HTMLElement) {
     </details>
   </td>
   <td><pre>${body ? 'true' : 'false'}</pre></td>`;
-      requestsEl.querySelector('tbody')?.appendChild(tr);
-
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      ev.source?.postMessage({
-        type: 'response',
-        id,
-        n: Math.random(),
-      });
-    }
-  });
+  requestsEl.querySelector('tbody')?.appendChild(tr);
 }

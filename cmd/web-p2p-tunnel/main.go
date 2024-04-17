@@ -2,15 +2,15 @@ package main
 
 import (
 	"flag"
-	"io"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/andrewmthomas87/web-p2p-tunnel/internal/signaling"
+	"github.com/andrewmthomas87/web-p2p-tunnel/internal/tunnel"
 )
 
 var (
@@ -25,73 +25,66 @@ func main() {
 		log.Fatal(err)
 	}
 
-	createRoomURL := signalingServerURL.JoinPath("rooms")
-	resp, err := http.Post(createRoomURL.String(), "", nil)
+	roomID, err := signaling.CreateRoom(signalingServerURL)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	body, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-	roomID := string(body)
 
 	log.Printf("Created room %s", roomID)
 
-	wsURL := signalingServerURL.JoinPath("ws")
-
-	query := wsURL.Query()
-	query.Set("role", "server")
-	query.Set("room-id", roomID)
-	wsURL.RawQuery = query.Encode()
-
-	if signalingServerURL.Scheme == "https" {
-		wsURL.Scheme = "wss"
-	} else {
-		wsURL.Scheme = "ws"
+	sc := signaling.NewClient(roomID, signalingServerURL)
+	if err := sc.Connect(); err != nil {
+		log.Fatal(err)
 	}
 
-	conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), nil)
-	if err != nil {
-		log.Fatal(resp, err)
-	}
-	defer conn.Close()
+	th := tunnel.NewHub()
+
+	var wg sync.WaitGroup
+	done := make(chan struct{})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		if err := sc.Run(done); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		if err := th.Run(
+			done,
+			sc.Offers(),
+			sc.Answers(),
+			sc.RemoteICECandidates(),
+			sc.LocalICECandidates(),
+		); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	wgDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(wgDone)
+	}()
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	done := make(chan struct{})
-
-	go func() {
-		defer close(done)
-		for {
-			messageType, message, err := conn.ReadMessage()
-			if err != nil {
-				return
-			}
-
-			log.Printf("Recv: %s, type: %d", message, messageType)
-		}
-	}()
-
 	select {
-	case <-done:
+	case <-wgDone:
 	case <-interrupt:
 		log.Println("signal: interrupt")
 
-		err := conn.WriteMessage(
-			websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
-		)
-		if err != nil {
-			return
-		}
+		close(done)
 
 		select {
-		case <-done:
-		case <-time.After(time.Second):
+		case <-wgDone:
+		case <-time.After(2 * time.Second):
 		}
 	}
 }

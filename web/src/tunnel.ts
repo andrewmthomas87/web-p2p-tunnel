@@ -1,13 +1,26 @@
+import { connectSignalingClient } from './signalingClient';
+import { RequestData, setupSW } from './sw';
+import { connectWebRTC } from './webrtc';
+
 const tunnelConnectFormEl = document.getElementById('tunnel-connect') as HTMLFormElement;
 const swStatusEl = document.getElementById('sw-status')!;
 const signalingStatusEl = document.getElementById('signaling-status')!;
 const webRTCStatusEl = document.getElementById('webrtc-status')!;
 const requestsEl = document.getElementById('requests')!;
 
-import { connectSignalingClient } from './signalingClient';
-import { setupSW } from './sw';
+let dc: RTCDataChannel | null = null;
 
-await setupSW(swStatusEl, requestsEl);
+await setupSW(tunnel, swStatusEl, requestsEl);
+
+async function tunnel(data: RequestData): Promise<Response> {
+  if (dc === null) {
+    return Response.error();
+  }
+
+  dc.send(JSON.stringify(data));
+
+  return Response.error();
+}
 
 tunnelConnectFormEl.addEventListener('submit', (ev) => {
   ev.preventDefault();
@@ -24,4 +37,8 @@ tunnelConnectFormEl.addEventListener('submit', (ev) => {
     import.meta.env.PUBLIC_SIGNALING_SERVER_URL,
     signalingStatusEl,
   );
+
+  sc.addEventListener('open', async () => {
+    dc = await connectWebRTC(sc, webRTCStatusEl);
+  });
 });

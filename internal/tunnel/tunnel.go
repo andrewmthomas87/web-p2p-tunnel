@@ -34,18 +34,7 @@ func NewTunnel(clientID string, onICECandidate func(*webrtc.ICECandidate)) (*Tun
 		t.log.Printf("Connection state change: %s", pcs)
 	})
 	pc.OnICECandidate(onICECandidate)
-	pc.OnDataChannel(func(dc *webrtc.DataChannel) {
-		t.log.Printf("Data channel: %s, %d", dc.Label(), *dc.ID())
-
-		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
-			req, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(msg.Data)))
-			if err != nil {
-				t.log.Printf("Failed to read request: %v", err)
-			}
-
-			t.log.Printf("%s %s", req.Method, req.URL)
-		})
-	})
+	pc.OnDataChannel(t.onDataChannel)
 
 	return t, nil
 }
@@ -81,4 +70,28 @@ func (t *Tunnel) AddICECandidate(candidate webrtc.ICECandidateInit) error {
 	t.log.Println("Adding ICE candidate...")
 
 	return t.pc.AddICECandidate(candidate)
+}
+
+func (t *Tunnel) onDataChannel(dc *webrtc.DataChannel) {
+	dc.OnOpen(func() {
+		t.log.Printf("Data channel opened: %s, %d", dc.Label(), *dc.ID())
+	})
+	dc.OnClose(func() {
+		t.log.Printf("Data channel closed: %s, %d", dc.Label(), *dc.ID())
+	})
+
+	if dc.Label() == "http" {
+		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
+			req, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(msg.Data)))
+			if err != nil {
+				t.log.Printf("Failed to read request: %v", err)
+			}
+
+			t.log.Printf("%s %s", req.Method, req.URL)
+
+			if err := dc.Send(nil); err != nil {
+				t.log.Printf("Failed to send response: %v", err)
+			}
+		})
+	}
 }

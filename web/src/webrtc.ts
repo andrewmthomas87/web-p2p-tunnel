@@ -34,8 +34,7 @@ export async function connectWebRTC(sc: WebSocket, statusEl: HTMLElement) {
     );
   });
 
-  const dc = pc.createDataChannel('test');
-  dc.binaryType = 'arraybuffer';
+  pc.createDataChannel('control');
 
   const offer = await pc.createOffer();
   sc.send(
@@ -47,5 +46,5 @@ export async function connectWebRTC(sc: WebSocket, statusEl: HTMLElement) {
 
   await pc.setLocalDescription(offer);
 
-  return dc;
+  return pc;
 }

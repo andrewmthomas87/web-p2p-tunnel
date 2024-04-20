@@ -8,16 +8,25 @@ const signalingStatusEl = document.getElementById('signaling-status')!;
 const webRTCStatusEl = document.getElementById('webrtc-status')!;
 const requestsEl = document.getElementById('requests')!;
 
-let dc: RTCDataChannel | null = null;
+let pc: RTCPeerConnection | null = null;
 
 await setupSW(tunnel, swStatusEl, requestsEl);
 
 async function tunnel(serialized: ArrayBuffer): Promise<Response> {
-  if (dc === null) {
+  if (pc === null) {
     return Response.error();
   }
 
-  dc.send(serialized);
+  const dc = pc.createDataChannel('http');
+  dc.binaryType = 'arraybuffer';
+
+  dc.addEventListener('open', () => {
+    dc.send(serialized);
+  });
+
+  dc.addEventListener('message', () => {
+    dc.close();
+  });
 
   return Response.error();
 }
@@ -39,6 +48,6 @@ tunnelConnectFormEl.addEventListener('submit', (ev) => {
   );
 
   sc.addEventListener('open', async () => {
-    dc = await connectWebRTC(sc, webRTCStatusEl);
+    pc = await connectWebRTC(sc, webRTCStatusEl);
   });
 });

@@ -15,12 +15,24 @@ import (
 
 var (
 	signalingServerURLStr = flag.String("signaling-server-url", "http://localhost:8080", "signaling server url")
+	tunnelOriginURLStr    = flag.String("tunnel-origin-url", "", "tunnel origin url")
+	tunnelTargetURLStr    = flag.String("tunnel-target-url", "", "tunnel target url")
 )
 
 func main() {
 	flag.Parse()
 
 	signalingServerURL, err := url.Parse(*signalingServerURLStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tunnelOriginURL, err := url.Parse(*tunnelOriginURLStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tunnelTargetURL, err := url.Parse(*tunnelTargetURLStr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,7 +49,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	th := tunnel.NewHub()
+	th := tunnel.NewHub(tunnelOriginURL, tunnelTargetURL)
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})

@@ -3,6 +3,7 @@ package tunnel
 import (
 	"errors"
 	"log"
+	"net/url"
 	"os"
 
 	"github.com/andrewmthomas87/web-p2p-tunnel/internal/signaling"
@@ -12,13 +13,18 @@ import (
 type Hub struct {
 	log *log.Logger
 
+	originURL *url.URL
+	targetURL *url.URL
+
 	tunnels map[string]*Tunnel
 }
 
-func NewHub() *Hub {
+func NewHub(originURL, targetURL *url.URL) *Hub {
 	return &Hub{
-		log:     log.New(os.Stderr, "[Tunnel hub] ", log.LstdFlags),
-		tunnels: make(map[string]*Tunnel),
+		log:       log.New(os.Stderr, "[Tunnel hub] ", log.LstdFlags),
+		originURL: originURL,
+		targetURL: targetURL,
+		tunnels:   make(map[string]*Tunnel),
 	}
 }
 
@@ -49,7 +55,7 @@ func (h *Hub) Run(
 					Data:     iceCandidate.ToJSON(),
 				}
 			}
-			t, err := NewTunnel(offer.ClientID, onICECandidate)
+			t, err := NewTunnel(h.originURL, h.targetURL, offer.ClientID, onICECandidate)
 			if err != nil {
 				return err
 			}

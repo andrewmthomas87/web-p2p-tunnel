@@ -24,7 +24,9 @@ async function tunnel(serialized: ArrayBuffer): Promise<Response> {
     dc.send(serialized);
   });
 
-  dc.addEventListener('message', () => {
+  dc.addEventListener('message', (ev) => {
+    console.log(new TextDecoder().decode(ev.data));
+
     dc.close();
   });
 

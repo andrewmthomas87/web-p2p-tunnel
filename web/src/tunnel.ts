@@ -2,6 +2,7 @@ import { connectSignalingClient } from './signalingClient';
 import { setupSW } from './sw';
 import { connectWebRTC } from './webrtc';
 
+const MTU = 16 * 1024 - 1;
 const TUNNEL_UNAVAILABLE_RESPONSE = 'HTTP/1.1 503 Service Unavailable\r\n\r\n';
 const TUNNEL_ERROR_RESPONSE = 'HTTP/1.1 502 Bad Gateway\r\n\r\n';
 
@@ -28,16 +29,49 @@ async function tunnel(serialized: ArrayBuffer): Promise<ArrayBuffer> {
     dc.binaryType = 'arraybuffer';
 
     dc.addEventListener('open', () => {
-      dc.send(serialized);
+      const arr = new Uint8Array(serialized);
+      const count = Math.ceil(arr.length / MTU);
+      for (let i = 0; i < count; i++) {
+        const fragment = arr.subarray(i * MTU, Math.min((i + 1) * MTU, arr.length));
+        dc.send(fragment);
+      }
+
+      dc.send(new ArrayBuffer(0));
     });
 
     dc.addEventListener('close', () => {
       reject(encoder.encode(TUNNEL_ERROR_RESPONSE).buffer);
     });
 
+    const fragments: ArrayBuffer[] = [];
+
+    const respond = () => {
+      const byteLength = fragments.reduce((prev, curr) => prev + curr.byteLength, 0);
+      const out = new ArrayBuffer(byteLength);
+      const arr = new Uint8Array(out);
+
+      let i = 0;
+      for (const fragment of fragments) {
+        arr.set(new Uint8Array(fragment), i);
+        i += fragment.byteLength;
+      }
+
+      resolve(out);
+    };
+
     dc.addEventListener('message', (ev) => {
-      resolve(ev.data);
-      dc.close();
+      if (!(ev.data instanceof ArrayBuffer)) {
+        reject(encoder.encode(TUNNEL_ERROR_RESPONSE).buffer);
+        return;
+      }
+
+      if (ev.data.byteLength === 0) {
+        respond();
+        dc.close();
+        return;
+      }
+
+      fragments.push(ev.data);
     });
   });
 }

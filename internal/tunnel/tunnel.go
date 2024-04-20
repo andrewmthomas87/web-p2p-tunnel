@@ -13,6 +13,8 @@ import (
 	"github.com/pion/webrtc/v4"
 )
 
+const mtu = 16*1024 - 1
+
 type Tunnel struct {
 	log *log.Logger
 
@@ -95,8 +97,10 @@ func (t *Tunnel) onDataChannel(dc *webrtc.DataChannel) {
 }
 
 func (t *Tunnel) handleHTTP(dc *webrtc.DataChannel) func(msg webrtc.DataChannelMessage) {
-	return func(msg webrtc.DataChannelMessage) {
-		req, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(msg.Data)))
+	var b bytes.Buffer
+
+	respond := func() {
+		req, err := http.ReadRequest(bufio.NewReader(&b))
 		if err != nil {
 			t.log.Printf("Failed to read request: %v", err)
 
@@ -125,7 +129,7 @@ func (t *Tunnel) handleHTTP(dc *webrtc.DataChannel) func(msg webrtc.DataChannelM
 			}
 		}
 
-		b, err := httputil.DumpResponse(resp, true)
+		out, err := httputil.DumpResponse(resp, true)
 		if err != nil {
 			t.log.Printf("Failed to dump response: %v", err)
 
@@ -133,10 +137,39 @@ func (t *Tunnel) handleHTTP(dc *webrtc.DataChannel) func(msg webrtc.DataChannelM
 			return
 		}
 
-		if err := dc.Send(b); err != nil {
+		count := len(out) / mtu
+		if len(out)%mtu > 0 {
+			count++
+		}
+		for i := 0; i < count; i++ {
+			f := out[i*mtu : min((i+1)*mtu, len(out))]
+			if err := dc.Send(f); err != nil {
+				t.log.Printf("Failed to send response: %v", err)
+
+				_ = dc.Close()
+				return
+			}
+		}
+
+		if err := dc.Send(nil); err != nil {
 			t.log.Printf("Failed to send response: %v", err)
 
 			_ = dc.Close()
+			return
+		}
+	}
+
+	return func(msg webrtc.DataChannelMessage) {
+		if len(msg.Data) == 0 {
+			respond()
+			return
+		}
+
+		if _, err := b.Write(msg.Data); err != nil {
+			t.log.Printf("Failed to write message data: %v", err)
+
+			_ = dc.Close()
+			return
 		}
 	}
 }

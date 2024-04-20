@@ -8,7 +8,7 @@ export type RequestData = {
 };
 
 export async function setupSW(
-  tunnel: (serialized: ArrayBuffer) => Promise<Response>,
+  tunnel: (serialized: ArrayBuffer) => Promise<ArrayBuffer>,
   statusEl: HTMLElement,
   requestsEl: HTMLElement,
 ) {
@@ -40,13 +40,25 @@ export async function setupSW(
       const data = ev.data as RequestData;
       addToTable(data, requestsEl);
 
-      await tunnel(data.serialized);
+      let resp;
+      try {
+        resp = await tunnel(data.serialized);
+      } catch (ex) {
+        if (ex instanceof ArrayBuffer) {
+          resp = ex;
+        } else {
+          throw ex;
+        }
+      }
 
-      ev.source?.postMessage({
-        type: 'response',
-        id: data.id,
-        n: Math.random(),
-      });
+      ev.source?.postMessage(
+        {
+          type: 'response',
+          id: data.id,
+          serialized: resp,
+        },
+        { transfer: [resp] },
+      );
     }
   });
 }

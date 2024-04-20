@@ -1,4 +1,4 @@
-import { serializeRequest } from './http';
+import { deserializeResponse, serializeRequest } from './http';
 
 const sw = self as ServiceWorkerGlobalScope & typeof globalThis;
 
@@ -11,7 +11,7 @@ sw.addEventListener('activate', (ev) => {
 });
 
 let id = 1;
-const responseResolvers = new Map<number, (value: number) => void>();
+const responseResolvers = new Map<number, (value: Response) => void>();
 
 const tunnelPattern = /^\/tunnel/;
 
@@ -26,10 +26,11 @@ sw.addEventListener('fetch', (ev) => {
 
 sw.addEventListener('message', (ev) => {
   if (ev.data.type === 'response') {
-    const { id, n } = ev.data as {
+    const { id, serialized } = ev.data as {
       id: number;
-      n: number;
+      serialized: ArrayBuffer;
     };
+    const res = deserializeResponse(serialized);
 
     const resolve = responseResolvers.get(id);
     if (!resolve) {
@@ -37,7 +38,7 @@ sw.addEventListener('message', (ev) => {
       return;
     }
 
-    resolve(n);
+    resolve(res);
     responseResolvers.delete(id);
   }
 });
@@ -53,7 +54,7 @@ async function getTunnelClient() {
 async function tunnelRequest(ev: FetchEvent): Promise<Response> {
   const tc = await getTunnelClient();
   if (!tc) {
-    return Response.error();
+    return new Response(null, { status: 503 });
   }
 
   const { method, url, headers } = ev.request;
@@ -64,7 +65,7 @@ async function tunnelRequest(ev: FetchEvent): Promise<Response> {
   const hasBody = ev.request.body !== null;
   const serialized = await serializeRequest(ev.request);
 
-  const response = new Promise<number>((resolve) => {
+  const resPromise = new Promise<Response>((resolve) => {
     responseResolvers.set(id, resolve);
   });
 
@@ -82,7 +83,5 @@ async function tunnelRequest(ev: FetchEvent): Promise<Response> {
   );
   id++;
 
-  const n = await response;
-
-  return Response.json({ n });
+  return await resPromise;
 }

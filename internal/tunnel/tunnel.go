@@ -1,8 +1,11 @@
 package tunnel
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/pion/webrtc/v4"
@@ -35,7 +38,12 @@ func NewTunnel(clientID string, onICECandidate func(*webrtc.ICECandidate)) (*Tun
 		t.log.Printf("Data channel: %s, %d", dc.Label(), *dc.ID())
 
 		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
-			t.log.Printf("Message: %s", msg.Data)
+			req, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(msg.Data)))
+			if err != nil {
+				t.log.Printf("Failed to read request: %v", err)
+			}
+
+			t.log.Printf("%s %s", req.Method, req.URL)
 		})
 	})
 

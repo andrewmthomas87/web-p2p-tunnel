@@ -1,3 +1,5 @@
+import { serializeRequest } from './http';
+
 const sw = self as ServiceWorkerGlobalScope & typeof globalThis;
 
 sw.addEventListener('install', () => {
@@ -54,11 +56,13 @@ async function tunnelRequest(ev: FetchEvent): Promise<Response> {
     return Response.error();
   }
 
-  const { method, url, headers, body } = ev.request;
+  const { method, url, headers } = ev.request;
   const headersList: [string, string][] = [];
   headers.forEach((value, key) => {
     headersList.push([key, value]);
   });
+  const hasBody = ev.request.body !== null;
+  const serialized = await serializeRequest(ev.request);
 
   const response = new Promise<number>((resolve) => {
     responseResolvers.set(id, resolve);
@@ -71,9 +75,10 @@ async function tunnelRequest(ev: FetchEvent): Promise<Response> {
       method,
       url,
       headersList,
-      body,
+      hasBody,
+      serialized,
     },
-    body ? [body] : [],
+    [serialized],
   );
   id++;
 

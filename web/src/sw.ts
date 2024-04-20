@@ -2,12 +2,13 @@ export type RequestData = {
   id: number;
   method: string;
   url: string;
-  headersList: [string, string][];
-  body: ReadableStream<Uint8Array> | null;
+  headersList: [string, any][];
+  hasBody: boolean;
+  serialized: ArrayBuffer;
 };
 
 export async function setupSW(
-  tunnel: (data: RequestData) => Promise<Response>,
+  tunnel: (serialized: ArrayBuffer) => Promise<Response>,
   statusEl: HTMLElement,
   requestsEl: HTMLElement,
 ) {
@@ -39,7 +40,7 @@ export async function setupSW(
       const data = ev.data as RequestData;
       addToTable(data, requestsEl);
 
-      await tunnel(data);
+      await tunnel(data.serialized);
 
       ev.source?.postMessage({
         type: 'response',
@@ -50,7 +51,10 @@ export async function setupSW(
   });
 }
 
-function addToTable({ id, method, url, headersList, body }: RequestData, requestsEl: HTMLElement) {
+function addToTable(
+  { id, method, url, headersList, hasBody }: RequestData,
+  requestsEl: HTMLElement,
+) {
   const headersStr = headersList.map(([key, value]) => `${key}: ${value}`).join('\n');
 
   const tr = document.createElement('tr');
@@ -64,6 +68,6 @@ function addToTable({ id, method, url, headersList, body }: RequestData, request
       <pre>${headersStr}</pre>
     </details>
   </td>
-  <td><pre>${body ? 'true' : 'false'}</pre></td>`;
+  <td><pre>${hasBody ? 'true' : 'false'}</pre></td>`;
   requestsEl.querySelector('tbody')?.appendChild(tr);
 }

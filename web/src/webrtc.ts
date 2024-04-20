@@ -35,6 +35,7 @@ export async function connectWebRTC(sc: WebSocket, statusEl: HTMLElement) {
   });
 
   const dc = pc.createDataChannel('test');
+  dc.binaryType = 'arraybuffer';
 
   const offer = await pc.createOffer();
   sc.send(

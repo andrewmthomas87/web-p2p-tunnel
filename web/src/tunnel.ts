@@ -1,5 +1,5 @@
 import { connectSignalingClient } from './signalingClient';
-import { RequestData, setupSW } from './sw';
+import { setupSW } from './sw';
 import { connectWebRTC } from './webrtc';
 
 const tunnelConnectFormEl = document.getElementById('tunnel-connect') as HTMLFormElement;
@@ -12,12 +12,12 @@ let dc: RTCDataChannel | null = null;
 
 await setupSW(tunnel, swStatusEl, requestsEl);
 
-async function tunnel(data: RequestData): Promise<Response> {
+async function tunnel(serialized: ArrayBuffer): Promise<Response> {
   if (dc === null) {
     return Response.error();
   }
 
-  dc.send(JSON.stringify(data));
+  dc.send(serialized);
 
   return Response.error();
 }

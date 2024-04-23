@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -129,13 +130,27 @@ func (t *Tunnel) handleHTTP(dc *webrtc.DataChannel) func(msg webrtc.DataChannelM
 			}
 		}
 
-		out, err := httputil.DumpResponse(resp, true)
+		header, err := httputil.DumpResponse(resp, false)
 		if err != nil {
 			t.log.Printf("Failed to dump response: %v", err)
 
 			_ = dc.Close()
 			return
 		}
+
+		var b bytes.Buffer
+		b.Write(header)
+
+		if resp.Body != nil {
+			if _, err := io.Copy(&b, resp.Body); err != nil {
+				t.log.Printf("Failed to build response: %v", err)
+
+				_ = dc.Close()
+				return
+			}
+		}
+
+		out := b.Bytes()
 
 		count := len(out) / mtu
 		if len(out)%mtu > 0 {

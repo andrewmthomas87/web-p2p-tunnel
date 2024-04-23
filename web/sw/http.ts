@@ -5,7 +5,10 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 export async function serializeRequest(req: Request): Promise<ArrayBuffer> {
-  const requestLine = `${req.method} ${req.url} HTTP/1.1`;
+  const url = new URL(req.url);
+  url.hash = '';
+
+  const requestLine = `${req.method} ${url.toString()} HTTP/1.1`;
   const headerFields: string[] = [];
   req.headers.forEach((v, k) => {
     headerFields.push(`${k}: ${v}`);

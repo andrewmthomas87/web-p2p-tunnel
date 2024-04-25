@@ -4,23 +4,39 @@ const CRLF_ENCODED = CRLF.split('').map((s) => s.charCodeAt(0));
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export async function serializeRequest(req: Request): Promise<ArrayBuffer> {
+type UserAgentInfo = {
+  origin: string;
+  userAgent: string;
+};
+
+export async function serializeRequest(
+  req: Request,
+  { origin, userAgent }: UserAgentInfo,
+): Promise<ArrayBuffer> {
   const url = new URL(req.url);
   url.hash = '';
+
+  const body = await req.arrayBuffer();
 
   const requestLine = `${req.method} ${url.toString()} HTTP/1.1`;
   const headerFields: string[] = [];
   req.headers.forEach((v, k) => {
     headerFields.push(`${k}: ${v}`);
   });
-  const headerStr = requestLine + CRLF + headerFields.join(CRLF) + CRLF + CRLF;
-  const header = encoder.encode(headerStr);
 
-  if (req.body === null) {
-    return header.buffer;
+  // TODO: set Origin to null in some cases (https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin)
+  headerFields.push(
+    `Host: ${url.host}`,
+    `Origin: ${origin}`,
+    `User-Agent: ${userAgent}`,
+    `Content-Length: ${body.byteLength}`,
+  );
+  if (req.referrer && req.referrer !== 'about:client') {
+    headerFields.push(`Referer: ${req.referrer}`);
   }
 
-  const body = await req.arrayBuffer();
+  const headerStr = requestLine + CRLF + headerFields.join(CRLF) + CRLF + CRLF;
+  const header = encoder.encode(headerStr);
 
   const out = new Uint8Array(header.byteLength + body.byteLength);
   out.set(header, 0);

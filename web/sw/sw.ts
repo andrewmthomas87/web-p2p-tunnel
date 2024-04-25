@@ -63,7 +63,10 @@ async function tunnelRequest(ev: FetchEvent): Promise<Response> {
     headersList.push([key, value]);
   });
   const hasBody = ev.request.body !== null;
-  const serialized = await serializeRequest(ev.request);
+  const serialized = await serializeRequest(ev.request, {
+    origin: sw.origin,
+    userAgent: sw.navigator.userAgent,
+  });
 
   const resPromise = new Promise<Response>((resolve) => {
     responseResolvers.set(id, resolve);

@@ -1,6 +1,7 @@
 package signaling
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -99,7 +100,7 @@ func (c *Client) Connect() error {
 	return nil
 }
 
-func (c *Client) Run(done <-chan struct{}) error {
+func (c *Client) Run(ctx context.Context) error {
 	c.log.Println("Running...")
 
 	go c.readPump()
@@ -107,7 +108,7 @@ func (c *Client) Run(done <-chan struct{}) error {
 
 	select {
 	case <-c.done:
-	case <-done:
+	case <-ctx.Done():
 		c.log.Println("Closing...")
 
 		err := c.conn.WriteControl(
@@ -190,6 +191,7 @@ func (c *Client) writePump() {
 			if err := c.writeMessage(iceCandidate.ClientID, "icecandidate", iceCandidate.Data); err != nil {
 				return
 			}
+
 		}
 	}
 }

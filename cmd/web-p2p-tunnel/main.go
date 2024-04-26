@@ -1,22 +1,28 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net/url"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 
 	"github.com/andrewmthomas87/web-p2p-tunnel/internal/signaling"
 	"github.com/andrewmthomas87/web-p2p-tunnel/internal/tunnel"
+	"github.com/pion/webrtc/v4"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
 	signalingServerURLStr = flag.String("signaling-server-url", "http://localhost:8080", "signaling server url")
 	tunnelOriginURLStr    = flag.String("tunnel-origin-url", "", "tunnel origin url")
 	tunnelTargetURLStr    = flag.String("tunnel-target-url", "", "tunnel target url")
+
+	defaultWebrtcConfig = webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}},
+	}
 )
 
 func main() {
@@ -49,54 +55,35 @@ func main() {
 		log.Fatal(err)
 	}
 
-	th := tunnel.NewHub(tunnelOriginURL, tunnelTargetURL)
+	th := tunnel.NewHub(tunnelOriginURL, tunnelTargetURL, defaultWebrtcConfig)
 
-	var wg sync.WaitGroup
-	done := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	g, ctx := errgroup.WithContext(ctx)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		if err := sc.Run(done); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		if err := th.Run(
-			done,
-			sc.Offers(),
-			sc.Answers(),
-			sc.RemoteICECandidates(),
-			sc.LocalICECandidates(),
-		); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	wgDone := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(wgDone)
-	}()
+	g.Go(func() error {
+		return sc.Run(ctx)
+	})
+	g.Go(func() error {
+		return th.Run(ctx, sc)
+	})
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
 	select {
-	case <-wgDone:
+	case <-ctx.Done():
 	case <-interrupt:
 		log.Println("signal: interrupt")
 
-		close(done)
+		cancel()
+	}
 
-		select {
-		case <-wgDone:
-		case <-time.After(2 * time.Second):
-		}
+	t := time.AfterFunc(2*time.Second, func() {
+		os.Exit(1)
+	})
+	defer t.Stop()
+
+	if err := g.Wait(); err != nil {
+		log.Fatal(err)
 	}
 }

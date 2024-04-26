@@ -26,10 +26,14 @@ type Tunnel struct {
 	pc     *webrtc.PeerConnection
 }
 
-func NewTunnel(originURL, targetURL *url.URL, clientID string, onICECandidate func(*webrtc.ICECandidate)) (*Tunnel, error) {
-	pc, err := webrtc.NewPeerConnection(
-		webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}},
-	)
+func NewTunnel(
+	originURL,
+	targetURL *url.URL,
+	webrtcConfig webrtc.Configuration,
+	clientID string,
+	onICECandidate func(*webrtc.ICECandidate),
+) (*Tunnel, error) {
+	pc, err := webrtc.NewPeerConnection(webrtcConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +58,7 @@ func NewTunnel(originURL, targetURL *url.URL, clientID string, onICECandidate fu
 func (t *Tunnel) Close() error {
 	t.log.Println("Closing...")
 
+	t.client.CloseIdleConnections()
 	return t.pc.Close()
 }
 

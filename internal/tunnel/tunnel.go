@@ -10,8 +10,6 @@ import (
 	"github.com/pion/webrtc/v4"
 )
 
-const mtu = 16*1024 - 1
-
 type Tunnel struct {
 	log *log.Logger
 

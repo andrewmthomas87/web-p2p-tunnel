@@ -2,17 +2,18 @@ package tunnel
 
 import (
 	"bufio"
-	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"os"
 
 	"github.com/pion/webrtc/v4"
 )
+
+const mtu = 16*1024 - 1
 
 type HTTPDataChannel struct {
 	log *log.Logger
@@ -78,54 +79,24 @@ func (h *HTTPDataChannel) Run() {
 		}
 	}
 
-	header, err := httputil.DumpResponse(resp, false)
-	if err != nil {
-		h.log.Printf("Failed to dump response: %v", err)
+	if err := h.writeResponse(resp); err != nil {
+		h.log.Printf("Failed to write response: %v", err)
 
 		_ = h.dc.Close()
 		return
 	}
+}
 
-	var b bytes.Buffer
-
-	if _, err := b.Write(header); err != nil {
-		h.log.Printf("Failed to build response: %v", err)
-
-		_ = h.dc.Close()
-		return
+func (h *HTTPDataChannel) Write(p []byte) (n int, err error) {
+	if len(p) > mtu {
+		return 0, errors.New("data size exceeds MTU")
 	}
 
-	if resp.Body != nil {
-		if _, err := io.Copy(&b, resp.Body); err != nil {
-			h.log.Printf("Failed to build response: %v", err)
-
-			_ = h.dc.Close()
-			return
-		}
+	if err := h.dc.Send(p); err != nil {
+		return 0, err
 	}
 
-	out := b.Bytes()
-
-	count := len(out) / mtu
-	if len(out)%mtu > 0 {
-		count++
-	}
-	for i := 0; i < count; i++ {
-		f := out[i*mtu : min((i+1)*mtu, len(out))]
-		if err := h.dc.Send(f); err != nil {
-			h.log.Printf("Failed to send response: %v", err)
-
-			_ = h.dc.Close()
-			return
-		}
-	}
-
-	if err := h.dc.Send(nil); err != nil {
-		h.log.Printf("Failed to send response: %v", err)
-
-		_ = h.dc.Close()
-		return
-	}
+	return len(p), nil
 }
 
 func (h *HTTPDataChannel) onMessage(msg webrtc.DataChannelMessage) {
@@ -144,4 +115,19 @@ func (h *HTTPDataChannel) onMessage(msg webrtc.DataChannelMessage) {
 
 func (h *HTTPDataChannel) onClose() {
 	_ = h.w.Close()
+}
+
+func (h *HTTPDataChannel) writeResponse(resp *http.Response) error {
+	w := bufio.NewWriterSize(h, mtu)
+	if err := resp.Write(w); err != nil {
+		return err
+	}
+	if err := w.Flush(); err != nil {
+		return err
+	}
+	if err := h.dc.Send(nil); err != nil {
+		return err
+	}
+
+	return nil
 }

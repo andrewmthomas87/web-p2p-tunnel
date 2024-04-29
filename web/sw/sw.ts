@@ -17,7 +17,7 @@ const tunnelPattern = /^\/tunnel/;
 
 sw.addEventListener('fetch', (ev) => {
   const url = new URL(ev.request.url);
-  if (tunnelPattern.test(url.pathname)) {
+  if (url.origin !== sw.origin || tunnelPattern.test(url.pathname)) {
     return;
   }
 

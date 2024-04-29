@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
 	"net/url"
 	"os"
 
@@ -21,19 +24,17 @@ type Signaler interface {
 type Hub struct {
 	log *log.Logger
 
-	originURL    *url.URL
-	targetURL    *url.URL
 	webrtcConfig webrtc.Configuration
 
-	tunnels map[string]*Tunnel
+	transport http.RoundTripper
+	tunnels   map[string]*Tunnel
 }
 
-func NewHub(originURL, targetURL *url.URL, webrtcConfig webrtc.Configuration) *Hub {
+func NewHub(target *url.URL, webrtcConfig webrtc.Configuration) *Hub {
 	return &Hub{
 		log:          log.New(os.Stderr, "[Tunnel hub] ", log.LstdFlags),
-		originURL:    originURL,
-		targetURL:    targetURL,
 		webrtcConfig: webrtcConfig,
+		transport:    newHandlerTransport(httputil.NewSingleHostReverseProxy(target)),
 		tunnels:      make(map[string]*Tunnel),
 	}
 }
@@ -89,7 +90,7 @@ func (h *Hub) handleOffer(
 		return signaling.Answer{}, errors.New("received offer for open tunnel")
 	}
 
-	t, err := NewTunnel(h.originURL, h.targetURL, h.webrtcConfig, offer.ClientID, onICECandidate)
+	t, err := NewTunnel(h.webrtcConfig, h.transport, offer.ClientID, onICECandidate)
 	if err != nil {
 		return signaling.Answer{}, err
 	}
@@ -132,4 +133,20 @@ func (h *Hub) close() error {
 	}
 
 	return nil
+}
+
+type handlerTransport struct {
+	handler http.Handler
+	http.ResponseWriter
+}
+
+func newHandlerTransport(handler http.Handler) http.RoundTripper {
+	return &handlerTransport{handler: handler}
+}
+
+func (ht *handlerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	rw := httptest.NewRecorder()
+	ht.handler.ServeHTTP(rw, req)
+
+	return rw.Result(), nil
 }

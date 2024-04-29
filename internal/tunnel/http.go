@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 
 	"github.com/pion/webrtc/v4"
@@ -18,9 +17,6 @@ const mtu = 16*1024 - 1
 type HTTPDataChannel struct {
 	log *log.Logger
 
-	originURL *url.URL
-	targetURL *url.URL
-
 	client *http.Client
 	dc     *webrtc.DataChannel
 
@@ -28,22 +24,15 @@ type HTTPDataChannel struct {
 	w *io.PipeWriter
 }
 
-func NewHTTPDataChannel(
-	originURL,
-	targetURL *url.URL,
-	client *http.Client,
-	dc *webrtc.DataChannel,
-) *HTTPDataChannel {
+func NewHTTPDataChannel(client *http.Client, dc *webrtc.DataChannel) *HTTPDataChannel {
 	r, w := io.Pipe()
 
 	h := &HTTPDataChannel{
-		log:       log.New(os.Stderr, fmt.Sprintf("[HTTP Data Channel %d] ", *dc.ID()), log.LstdFlags),
-		originURL: originURL,
-		targetURL: targetURL,
-		client:    client,
-		dc:        dc,
-		r:         r,
-		w:         w,
+		log:    log.New(os.Stderr, fmt.Sprintf("[HTTP Data Channel %d] ", *dc.ID()), log.LstdFlags),
+		client: client,
+		dc:     dc,
+		r:      r,
+		w:      w,
 	}
 
 	dc.OnMessage(h.onMessage)
@@ -60,14 +49,9 @@ func (h *HTTPDataChannel) Run() {
 		_ = h.dc.Close()
 		return
 	}
+	req.RequestURI = ""
 
 	h.log.Printf("%s %s", req.Method, req.URL)
-
-	req.RequestURI = ""
-	if req.URL.Scheme == h.originURL.Scheme && req.URL.Host == h.originURL.Host {
-		req.URL.Scheme = h.targetURL.Scheme
-		req.URL.Host = h.targetURL.Host
-	}
 
 	resp, err := h.client.Do(req)
 	if err != nil {

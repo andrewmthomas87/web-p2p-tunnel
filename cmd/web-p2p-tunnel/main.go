@@ -17,7 +17,6 @@ import (
 
 var (
 	signalingServerURLStr = flag.String("signaling-server-url", "http://localhost:8080", "signaling server url")
-	tunnelOriginURLStr    = flag.String("tunnel-origin-url", "", "tunnel origin url")
 	tunnelTargetURLStr    = flag.String("tunnel-target-url", "", "tunnel target url")
 
 	defaultWebrtcConfig = webrtc.Configuration{
@@ -29,11 +28,6 @@ func main() {
 	flag.Parse()
 
 	signalingServerURL, err := url.Parse(*signalingServerURLStr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	tunnelOriginURL, err := url.Parse(*tunnelOriginURLStr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,7 +49,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	th := tunnel.NewHub(tunnelOriginURL, tunnelTargetURL, defaultWebrtcConfig)
+	th := tunnel.NewHub(tunnelTargetURL, defaultWebrtcConfig)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	g, ctx := errgroup.WithContext(ctx)

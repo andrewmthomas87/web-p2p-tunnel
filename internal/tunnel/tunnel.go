@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 
 	"github.com/pion/webrtc/v4"
@@ -13,17 +12,13 @@ import (
 type Tunnel struct {
 	log *log.Logger
 
-	originURL *url.URL
-	targetURL *url.URL
-
 	client *http.Client
 	pc     *webrtc.PeerConnection
 }
 
 func NewTunnel(
-	originURL,
-	targetURL *url.URL,
 	webrtcConfig webrtc.Configuration,
+	transport http.RoundTripper,
 	clientID string,
 	onICECandidate func(*webrtc.ICECandidate),
 ) (*Tunnel, error) {
@@ -33,11 +28,9 @@ func NewTunnel(
 	}
 
 	t := &Tunnel{
-		log:       log.New(os.Stderr, fmt.Sprintf("[Tunnel %s] ", clientID[:6]), log.LstdFlags),
-		originURL: originURL,
-		targetURL: targetURL,
-		client:    &http.Client{},
-		pc:        pc,
+		log:    log.New(os.Stderr, fmt.Sprintf("[Tunnel %s] ", clientID[:6]), log.LstdFlags),
+		client: &http.Client{Transport: transport},
+		pc:     pc,
 	}
 
 	pc.OnConnectionStateChange(func(pcs webrtc.PeerConnectionState) {
@@ -87,7 +80,7 @@ func (t *Tunnel) onDataChannel(dc *webrtc.DataChannel) {
 	t.log.Printf("Data Channel %s, %d", dc.Label(), *dc.ID())
 
 	if dc.Label() == "http" {
-		hdc := NewHTTPDataChannel(t.originURL, t.targetURL, t.client, dc)
+		hdc := NewHTTPDataChannel(t.client, dc)
 		go hdc.Run()
 	}
 }

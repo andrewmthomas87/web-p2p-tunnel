@@ -33,8 +33,9 @@ func NewTunnel(
 		return nil, err
 	}
 	client := &http.Client{
-		Jar:       jar,
-		Transport: transport,
+		Jar:           jar,
+		Transport:     transport,
+		CheckRedirect: checkRedirect,
 	}
 
 	t := &Tunnel{
@@ -93,4 +94,18 @@ func (t *Tunnel) onDataChannel(dc *webrtc.DataChannel) {
 		hdc := NewHTTPDataChannel(t.client, dc)
 		go hdc.Run()
 	}
+}
+
+func checkRedirect(req *http.Request, via []*http.Request) error {
+	firstReq := req
+	if len(via) > 0 {
+		firstReq = via[0]
+	}
+
+	redirect := firstReq.Header.Get("Web-P2p-Tunnel-Redirect")
+	if redirect != "follow" {
+		return http.ErrUseLastResponse
+	}
+
+	return nil
 }

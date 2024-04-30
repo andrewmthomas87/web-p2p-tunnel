@@ -30,6 +30,7 @@ export async function serializeRequest(
     `Origin: ${origin}`,
     `User-Agent: ${userAgent}`,
     `Content-Length: ${body.byteLength}`,
+    `Web-P2p-Tunnel-Redirect: ${req.redirect}`,
   );
   if (req.referrer && req.referrer !== 'about:client') {
     headerFields.push(`Referer: ${req.referrer}`);

@@ -24,17 +24,24 @@ export async function serializeRequest(
     headerFields.push(`${k}: ${v}`);
   });
 
-  // TODO: set Origin to null in some cases (https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin)
-  headerFields.push(
-    `Host: ${url.host}`,
-    `Origin: ${origin}`,
-    `User-Agent: ${userAgent}`,
-    `Content-Length: ${body.byteLength}`,
-    `Web-P2p-Tunnel-Redirect: ${req.redirect}`,
-  );
+  const extra: [string, unknown][] = [
+    ['Host', url.host],
+    // TODO: set Origin to null in some cases (https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin)
+    ['Origin', origin],
+    ['User-Agent', userAgent],
+    ['Content-Length', body.byteLength],
+    ['Sec-Fetch-Dest', req.destination],
+    ['Sec-Fetch-Mode', req.mode],
+    ['Web-P2p-Tunnel-Redirect', req.redirect],
+  ];
   if (req.referrer && req.referrer !== 'about:client') {
-    headerFields.push(`Referer: ${req.referrer}`);
+    extra.push(['Referer', req.referrer]);
   }
+  extra.forEach(([k, v]) => {
+    if (!req.headers.has(k)) {
+      headerFields.push(`${k}: ${v}`);
+    }
+  });
 
   const headerStr = requestLine + CRLF + headerFields.join(CRLF) + CRLF + CRLF;
   const header = encoder.encode(headerStr);

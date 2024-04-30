@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
 	"os"
 
 	"github.com/pion/webrtc/v4"
@@ -27,9 +28,18 @@ func NewTunnel(
 		return nil, err
 	}
 
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, err
+	}
+	client := &http.Client{
+		Jar:       jar,
+		Transport: transport,
+	}
+
 	t := &Tunnel{
 		log:    log.New(os.Stderr, fmt.Sprintf("[Tunnel %s] ", clientID[:6]), log.LstdFlags),
-		client: &http.Client{Transport: transport},
+		client: client,
 		pc:     pc,
 	}
 

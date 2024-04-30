@@ -2,7 +2,6 @@ package tunnel
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -72,12 +71,16 @@ func (h *HTTPDataChannel) Run() {
 }
 
 func (h *HTTPDataChannel) Write(p []byte) (n int, err error) {
-	if len(p) > mtu {
-		return 0, errors.New("data size exceeds MTU")
+	count := len(p) / mtu
+	if len(p)%mtu > 0 {
+		count++
 	}
 
-	if err := h.dc.Send(p); err != nil {
-		return 0, err
+	for i := 0; i < count; i++ {
+		fragment := p[i*mtu : min((i+1)*mtu, len(p))]
+		if err := h.dc.Send(fragment); err != nil {
+			return 0, err
+		}
 	}
 
 	return len(p), nil

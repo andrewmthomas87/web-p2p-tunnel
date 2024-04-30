@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"net/http/httputil"
 	"net/url"
 	"os"
 
@@ -30,11 +29,11 @@ type Hub struct {
 	tunnels   map[string]*Tunnel
 }
 
-func NewHub(target *url.URL, webrtcConfig webrtc.Configuration) *Hub {
+func NewHub(target *url.URL, changeHostHeader, changeOriginHeader bool, webrtcConfig webrtc.Configuration) *Hub {
 	return &Hub{
 		log:          log.New(os.Stderr, "[Tunnel hub] ", log.LstdFlags),
 		webrtcConfig: webrtcConfig,
-		transport:    newHandlerTransport(httputil.NewSingleHostReverseProxy(target)),
+		transport:    newHandlerTransport(newSingleHostReverseProxy(target, changeHostHeader, changeOriginHeader)),
 		tunnels:      make(map[string]*Tunnel),
 	}
 }

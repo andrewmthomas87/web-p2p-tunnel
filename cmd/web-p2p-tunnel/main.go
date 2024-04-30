@@ -18,6 +18,16 @@ import (
 var (
 	signalingServerURLStr = flag.String("signaling-server-url", "http://localhost:8080", "signaling server url")
 	tunnelTargetURLStr    = flag.String("tunnel-target-url", "", "tunnel target url")
+	changeHostHeader      = flag.Bool(
+		"change-host-header",
+		false,
+		"change the Host header to the host of the target url",
+	)
+	changeOriginHeader = flag.Bool(
+		"change-origin-header",
+		false,
+		"change the Origin header's scheme & host to the scheme & host of the target url",
+	)
 
 	defaultWebrtcConfig = webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}},
@@ -49,7 +59,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	th := tunnel.NewHub(tunnelTargetURL, defaultWebrtcConfig)
+	th := tunnel.NewHub(tunnelTargetURL, *changeHostHeader, *changeOriginHeader, defaultWebrtcConfig)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	g, ctx := errgroup.WithContext(ctx)

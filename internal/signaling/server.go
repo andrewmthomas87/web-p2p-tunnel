@@ -69,7 +69,7 @@ func (s *Server) WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.log.Printf("Adding %s ws conn to room %s...", role, room.ID)
+	s.log.Printf("Adding %s ws conn to room %s...", role, room.ID[:6])
 
 	if role == "client" {
 		room.HandleClientConn(conn)

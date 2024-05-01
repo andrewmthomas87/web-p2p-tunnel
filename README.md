@@ -5,7 +5,7 @@ directly to any device with a web browser and Internet connection - no server ne
 
 ![Diagram](diagram.png)
 
-![Demo video](demo.mov)
+https://github.com/andrewmthomas87/web-p2p-tunnel/assets/7506142/d59cb10c-038b-45d5-8c07-96c6b2a8c197
 
 Consists of:
 

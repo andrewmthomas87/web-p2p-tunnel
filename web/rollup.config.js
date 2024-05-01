@@ -38,6 +38,10 @@ export default defineConfig([
         fileName: 'tunnel.html',
         title: 'web-p2p-tunnel',
         template: fileTemplate('src/tunnel.html'),
+        meta: [
+          { charset: 'utf-8' },
+          { name: 'viewport', content: 'width=device-width,initial-scale=1,maximum-scale=1' },
+        ],
       }),
       isProduction && (await import('@rollup/plugin-terser')).default(),
     ],

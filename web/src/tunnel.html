@@ -8,7 +8,7 @@
   <form id="tunnel-connect">
     <label>
       Room ID:
-      <input type="text" name="room-id" />
+      <input type="text" name="room-id" autocomplete="off" />
     </label>
     <button type="submit">Connect</button>
   </form>
@@ -45,6 +45,13 @@
   <h2>Requests</h2>
 
   <table id="requests">
+    <colgroup>
+      <col style="width: 10%" />
+      <col style="width: 10%" />
+      <col style="width: 35%" />
+      <col style="width: 35%" />
+      <col style="width: 10%" />
+    </colgroup>
     <thead>
       <tr>
         <th>ID</th>
@@ -57,3 +64,17 @@
     <tbody></tbody>
   </table>
 </section>
+
+<style>
+  table {
+    text-align: left;
+  }
+
+  td {
+    padding-right: 1em;
+  }
+
+  #requests {
+    width: 100%;
+  }
+</style>

@@ -3,7 +3,12 @@ import { setupSW } from './sw';
 import { connectWebRTC } from './webrtc';
 
 const MTU = 16 * 1024 - 1;
-const TUNNEL_UNAVAILABLE_RESPONSE = 'HTTP/1.1 503 Service Unavailable\r\n\r\n';
+const TUNNEL_UNAVAILABLE_RESPONSE =
+  'HTTP/1.1 503 Service Unavailable\r\n' +
+  'Content-Type: text/html\r\n' +
+  '\r\n' +
+  '<h1>503: Service Unavailable</h1>' +
+  '<p>The tunnel is disconnected. <a href="/tunnel">Tunnel page</a>.</p>';
 const TUNNEL_ERROR_RESPONSE = 'HTTP/1.1 502 Bad Gateway\r\n\r\n';
 
 const encoder = new TextEncoder();

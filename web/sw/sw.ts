@@ -65,7 +65,11 @@ async function getTunnelClient() {
 async function tunnelRequest(ev: FetchEvent): Promise<Response> {
   const tc = await getTunnelClient();
   if (!tc) {
-    return new Response(null, { status: 503 });
+    return new Response(
+      '<h1>503: Service Unavailable</h1>' +
+        '<p>The tunnel is disconnected. <a href="/tunnel">Tunnel page</a>.</p>',
+      { status: 503, headers: new Headers({ 'Content-Type': 'text/html' }) },
+    );
   }
 
   const { method, url, headers } = ev.request;

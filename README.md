@@ -5,6 +5,8 @@ directly to any device with a web browser and Internet connection - no server ne
 
 ![Diagram](diagram.png)
 
+![Demo video](demo.mov)
+
 Consists of:
 
 - **web**: service worker that intercepts requests and web page that tunnels requests over WebRTC data channels.

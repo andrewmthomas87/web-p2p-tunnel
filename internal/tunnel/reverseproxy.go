@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"fmt"
 	"net/http/httputil"
 	"net/url"
 )
@@ -16,13 +17,7 @@ func newSingleHostReverseProxy(target *url.URL, changeHostHeader, changeOriginHe
 			}
 
 			if changeOriginHeader {
-				originStr := r.In.Header.Get("Origin")
-				if origin, err := url.Parse(originStr); err == nil {
-					origin.Scheme = target.Scheme
-					origin.Host = target.Host
-
-					r.Out.Header.Set("Origin", origin.String())
-				}
+				r.Out.Header.Set("Origin", fmt.Sprintf("%s://%s", target.Scheme, target.Host))
 			}
 		},
 	}

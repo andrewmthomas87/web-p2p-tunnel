@@ -26,7 +26,7 @@ var (
 	changeOriginHeader = flag.Bool(
 		"change-origin-header",
 		false,
-		"change the Origin header's scheme & host to the scheme & host of the target url",
+		"change the Origin header to the origin of the target url",
 	)
 
 	defaultWebrtcConfig = webrtc.Configuration{

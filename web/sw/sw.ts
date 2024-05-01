@@ -32,6 +32,17 @@ sw.addEventListener('message', (ev) => {
     };
     const res = deserializeResponse(serialized);
 
+    if (res.status >= 300 && res.status <= 399) {
+      const location = res.headers.get('Location');
+      const absLocation = res.headers.get('Web-P2p-Tunnel-Abs-Location');
+
+      if (location && absLocation) {
+        res.headers.set('Location', absLocation);
+      }
+
+      res.headers.delete('Web-P2p-Tunnel-Abs-Location');
+    }
+
     const resolve = responseResolvers.get(id);
     if (!resolve) {
       console.warn(`Received response with unknown id ${id}`);

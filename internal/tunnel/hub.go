@@ -147,5 +147,8 @@ func (ht *handlerTransport) RoundTrip(req *http.Request) (*http.Response, error)
 	rw := httptest.NewRecorder()
 	ht.handler.ServeHTTP(rw, req)
 
-	return rw.Result(), nil
+	res := rw.Result()
+	res.Request = req
+
+	return res, nil
 }

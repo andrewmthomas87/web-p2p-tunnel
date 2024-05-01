@@ -62,6 +62,10 @@ func (h *HTTPDataChannel) Run() {
 		}
 	}
 
+	if resp.StatusCode >= 300 && resp.StatusCode <= 399 {
+		_ = addAbsLocationHeader(resp, req)
+	}
+
 	if err := h.writeResponse(resp); err != nil {
 		h.log.Printf("Failed to write response: %v", err)
 
@@ -115,6 +119,17 @@ func (h *HTTPDataChannel) writeResponse(resp *http.Response) error {
 	if err := h.dc.Send(nil); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func addAbsLocationHeader(resp *http.Response, req *http.Request) error {
+	location, err := resp.Location()
+	if err != nil {
+		return err
+	}
+
+	resp.Header.Set("Web-P2p-Tunnel-Abs-Location", location.String())
 
 	return nil
 }
